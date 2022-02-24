@@ -96,7 +96,7 @@ void Renderer::CreateDeviceResources() {
         // Compile and create the shader
         ComPtr<ID3DBlob> cs_compiled;
         std::vector<char> cs_bytes = readBytes("compute.hlsl");
-        D3DCompile(cs_bytes.data(), cs_bytes.size(), NULL, NULL, NULL, "main", "cs_5_0", NULL, NULL, cs_compiled.GetAddressOf(), NULL);
+        D3DCompile(cs_bytes.data(), cs_bytes.size(), NULL, NULL, NULL, "main", "cs_5_0", D3DCOMPILE_DEBUG, NULL, cs_compiled.GetAddressOf(), NULL);
 
         pDevice->CreateComputeShader(cs_compiled->GetBufferPointer(), cs_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
         pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
@@ -162,7 +162,7 @@ void Renderer::CreateDeviceResources() {
         // Compile and create the shader
         ComPtr<ID3DBlob> vs_compiled;
         std::vector<char> vs_bytes = readBytes("vertex.hlsl");
-        D3DCompile(vs_bytes.data(), vs_bytes.size(), NULL, NULL, NULL, "main", "vs_5_0", NULL, NULL, vs_compiled.GetAddressOf(), NULL);
+        D3DCompile(vs_bytes.data(), vs_bytes.size(), NULL, NULL, NULL, "main", "vs_5_0", D3DCOMPILE_DEBUG, NULL, vs_compiled.GetAddressOf(), NULL);
 
         pDevice->CreateVertexShader(vs_compiled->GetBufferPointer(), vs_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf());
         pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
@@ -240,7 +240,7 @@ void Renderer::CreateDeviceResources() {
         // Compile and create the shader
         ComPtr<ID3DBlob> ps_compiled;
         std::vector<char> ps_bytes = readBytes("pixel.hlsl");
-        D3DCompile(ps_bytes.data(), ps_bytes.size(), NULL, NULL, NULL, "main", "ps_5_0", NULL, NULL, ps_compiled.GetAddressOf(), NULL);
+        D3DCompile(ps_bytes.data(), ps_bytes.size(), NULL, NULL, NULL, "main", "ps_5_0", D3DCOMPILE_DEBUG, NULL, ps_compiled.GetAddressOf(), NULL);
 
         pDevice->CreatePixelShader(ps_compiled->GetBufferPointer(), ps_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
         pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
@@ -437,7 +437,8 @@ void Renderer::OnHLSL_Change(SHADER_TYPE shaderType) {
     // Compile the shader (depending on the shaderType variable)
     ComPtr<ID3DBlob> s_compiled;
     std::vector<char> s_bytes = readBytes(shaderType == SHADER_TYPE_COMPUTE ? "compute.hlsl" : shaderType == SHADER_TYPE_VERTEX ? "vertex.hlsl" : "pixel.hlsl");
-    D3DCompile(s_bytes.data(), s_bytes.size(), NULL, NULL, NULL, "main", shaderType == SHADER_TYPE_COMPUTE ? "cs_5_0" : shaderType == SHADER_TYPE_VERTEX ? "vs_5_0" : "ps_5_0", NULL, NULL, s_compiled.GetAddressOf(), NULL);
+    D3DCompile(s_bytes.data(), s_bytes.size(), NULL, NULL, NULL, "main", 
+               shaderType == SHADER_TYPE_COMPUTE ? "cs_5_0" : shaderType == SHADER_TYPE_VERTEX ? "vs_5_0" : "ps_5_0", D3DCOMPILE_DEBUG, NULL, s_compiled.GetAddressOf(), NULL);
 
     if (s_compiled == nullptr) {
         Reloading = false;
