@@ -439,25 +439,29 @@ void Renderer::OnHLSL_Change(SHADER_TYPE shaderType) {
     std::vector<char> s_bytes = readBytes(shaderType == SHADER_TYPE_COMPUTE ? "compute.hlsl" : shaderType == SHADER_TYPE_VERTEX ? "vertex.hlsl" : "pixel.hlsl");
     D3DCompile(s_bytes.data(), s_bytes.size(), NULL, NULL, NULL, "main", shaderType == SHADER_TYPE_COMPUTE ? "cs_5_0" : shaderType == SHADER_TYPE_VERTEX ? "vs_5_0" : "ps_5_0", NULL, NULL, s_compiled.GetAddressOf(), NULL);
 
+    if (s_compiled == nullptr) {
+        Reloading = false;
+        return;
+    }
+
     // Assign the shader to the corresponding variable
     switch (shaderType) {
-        case SHADER_TYPE_COMPUTE: 
-            pDevice->CreateComputeShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
-            pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
-            break;
-        case SHADER_TYPE_VERTEX: 
-            pDevice->CreateVertexShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf()); 
-            pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
-            break;
-        case SHADER_TYPE_PIXEL: 
-            pDevice->CreatePixelShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf()); 
-            pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
-            break;
+    case SHADER_TYPE_COMPUTE:
+        pDevice->CreateComputeShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
+        pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
+        break;
+    case SHADER_TYPE_VERTEX:
+        pDevice->CreateVertexShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf());
+        pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
+        break;
+    case SHADER_TYPE_PIXEL:
+        pDevice->CreatePixelShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
+        pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
+        break;
     }
+
+    Reloading = false;
 
     // Re-calculate and re-render
     Calculate();
-
-    // Set cursor back from loading
-    Reloading = false;
 }
