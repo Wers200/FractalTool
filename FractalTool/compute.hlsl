@@ -15,7 +15,7 @@ uint getIter(uint x, uint y) {
 	double zx = ((double)x / size.x) * (zoom.z - zoom.x) + zoom.x;
 	double zy = ((double)y / size.y) * (zoom.w - zoom.y) + zoom.y;
 
-	// Get the maximum z^2 + z_starting iteration (where it is not outside of the circle with radius of two)
+	// Get the maximum z^2 + c iteration (where it is not outside of the circle with radius of two)
 	uint j = 0;
 	while (zx * zx * zy * zy < 4 && j <= maxIter) {
 		double temp = zx * zx - zy * zy + c.x;
