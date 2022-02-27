@@ -16,9 +16,6 @@
     <Filter Include="Shader Files">
       <UniqueIdentifier>{b981d639-b59f-42c1-ac37-ba2648e54980}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shader Header Files">
-      <UniqueIdentifier>{fc612b50-ca50-47f7-aa83-f3ad784e837d}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -49,15 +46,6 @@
     </ClInclude>
     <ClInclude Include="file.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="compute.h">
-      <Filter>Shader Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pixel.h">
-      <Filter>Shader Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vertex.h">
-      <Filter>Shader Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

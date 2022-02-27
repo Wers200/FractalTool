@@ -147,14 +147,11 @@
     <ClCompile Include="renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="compute.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="file.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="pixel.h" />
     <ClInclude Include="renderer.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="vertex.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc" />
