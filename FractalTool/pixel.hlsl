@@ -11,6 +11,7 @@ cbuffer global : register(b0) {
 	float2 c		: C;
 	uint2 size		: Size;
 	uint maxIter	: MaxIter;
+	float time		: Time;
 };
 
 float4 main(PS_INPUT input) : SV_TARGET

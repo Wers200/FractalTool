@@ -3,6 +3,8 @@
 
 Renderer* renderer;
 
+bool mDown = false;
+
 // Required for shift-key feature: press shift key and turn on/off the square zoom selection mode
 bool shift = false;
 float zAtStart = 0;
@@ -40,33 +42,37 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			renderer->Info.PreviewZoom.z = (float)xPos / renderer->Info.Size.x;
 			// In case of square mode being turned on force the bottom of zoom make the selection a square
 			renderer->Info.PreviewZoom.w = !shift ? (float)yPos / renderer->Info.Size.y : wAtStart - zAtStart + renderer->Info.PreviewZoom.z;
-			if(!renderer->Reloading) renderer->OnRender(true);
+		}
+		if (mDown) {
+			renderer->Info.C.x = (float)GET_X_LPARAM(lParam);
+			renderer->Info.C.y = (float)GET_Y_LPARAM(lParam);
+			renderer->OnC_Change();
 		}
 		return 0;
 	case WM_KEYDOWN:
-		if (wParam == VK_ESCAPE) {
+		switch (wParam) {
+		case VK_ESCAPE:
 			// Set zoom to default and invalidate zoom selection
 			renderer->Info.Zoom = XMFLOAT4(-2, 2, 2, -2);
 			renderer->Info.PreviewZoom = XMFLOAT4(-1, -1, -1, -1);
 			renderer->OnZoom();
-		}
-		else if (wParam == VK_RIGHT) {
+			break;
+		case VK_RIGHT:
 			renderer->Info.MaxIter += 25;
-			renderer->Calculate();
-		}
-		else if (wParam == VK_LEFT && renderer->Info.MaxIter > 25) {
-			renderer->Info.MaxIter -= 25;
-			renderer->Calculate();
-		}
-		else if (wParam == VK_UP) {
+			break;
+		case VK_LEFT:
+			if (renderer->Info.MaxIter > 25) renderer->Info.MaxIter -= 25;
+			break;
+		case VK_UP:
 			renderer->Info.MaxIter += 250;
-			renderer->Calculate();
+			break;
+		case VK_DOWN:
+			if (renderer->Info.MaxIter > 250) renderer->Info.MaxIter -= 250;
+			break;
+		case VK_SHIFT:
+			shift = true;
+			break;
 		}
-		else if (wParam == VK_DOWN && renderer->Info.MaxIter > 250) {
-			renderer->Info.MaxIter -= 250;
-			renderer->Calculate();
-		}
-		else if (wParam == VK_SHIFT) shift = true;
 		return 0;
 	case WM_KEYUP:
 		if (wParam == VK_SHIFT) shift = false;
@@ -76,8 +82,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			renderer->Info.C.x = (float)GET_X_LPARAM(lParam);
 			renderer->Info.C.y = (float)GET_Y_LPARAM(lParam);
 			renderer->OnC_Change();
+
+			mDown = true;
 		}
 		return 0;
+	case WM_LBUTTONUP:
+		mDown = false;
 	}
 	return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
@@ -204,6 +214,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int) {
 	MSG msg = {};
 	bool quit = false;
 
+	// Get time ticks frequency
+	LARGE_INTEGER freq_count;
+	QueryPerformanceFrequency(&freq_count);
+	float freq = (float)freq_count.QuadPart;
+
+	// Get time ticks count
+	QueryPerformanceCounter(&freq_count);
+	long long prevTime = freq_count.QuadPart;
+
+	float delta = 0;
+	LARGE_INTEGER now;
+
 	while (!quit) {
 		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			if (msg.message == WM_QUIT) {
@@ -215,6 +237,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int) {
 				DispatchMessage(&msg);
 			}
 		}
+
+		// Retrieve change in time since the last render
+		QueryPerformanceCounter(&now);
+		delta = (float)(now.QuadPart - prevTime) / freq;
+		prevTime = now.QuadPart;
+
+		renderer->OnRender(delta);
 	}
 
 	return 0;

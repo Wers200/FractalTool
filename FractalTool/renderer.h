@@ -19,9 +19,11 @@ struct CBUFFER {
 	XMUINT2 Size;
 	// Max iterations to perform in compute shader
 	UINT MaxIter;
+	// Time passed since the app start
+	FLOAT Time;
 
 	// Unused variable, added to satisfy the D3D requirement of sizeof(CBUFFER) being divisible by 16
-	XMFLOAT3 Unused;
+	XMFLOAT2 Unused;
 };
 
 class Renderer {
@@ -32,11 +34,10 @@ public:
 	CBUFFER Info;
 	bool Reloading = false;
 
-	void OnRender(bool updateCBuffer = false);
+	void OnRender(float delta);
 	void OnResize();
 	void OnZoom();
 	void OnC_Change();
-	void Calculate();
 	void OnHLSL_Change(SHADER_TYPE shader);
 private:
 	ComPtr<ID3D11Device> pDevice;

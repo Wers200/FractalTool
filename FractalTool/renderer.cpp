@@ -11,16 +11,9 @@ void Renderer::UpdateConstantBuffer() {
     pDeviceContext->Map(cBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &cBufferWrite);
     memcpy(cBufferWrite.pData, &Info, sizeof(CBUFFER));
     pDeviceContext->Unmap(cBuffer.Get(), 0);
-
-    // Update shader constant buffers
-    pDeviceContext->CSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
-    pDeviceContext->PSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
 }
 
 UINT* Renderer::RunComputeShader(bool updateTexture) {
-    // Set the unordered access view
-    pDeviceContext->CSSetUnorderedAccessViews(0, 1, csUAV.GetAddressOf(), nullptr);
-
     // Run the compute shader
     pDeviceContext->Dispatch(1, 1, 1);
 
@@ -30,12 +23,13 @@ UINT* Renderer::RunComputeShader(bool updateTexture) {
     D3D11_MAPPED_SUBRESOURCE outputRead;
     pDeviceContext->Map(csOutputResultBuffer.Get(), 0, D3D11_MAP_READ, 0, &outputRead);
 
-    UINT* data = (UINT*)outputRead.pData;
+    UINT* data = (UINT*)malloc(sizeof(UINT) * Info.Size.x * Info.Size.y);
+    memcpy(data, outputRead.pData, sizeof(UINT) * Info.Size.x * Info.Size.y);
 
     pDeviceContext->Unmap(csOutputResultBuffer.Get(), 0);
 
     if (updateTexture) {
-        // Re-create the texture (I am not sure why, but using the Map-Unmap method didn't work well and messed everything up)
+        // Re-create the texture (I am not sure why, but using the Map-Unmap method didn't work well and messed everything up)       
         D3D11_TEXTURE2D_DESC outputTextureDesc;
         csOutputTexture->GetDesc(&outputTextureDesc);
 
@@ -44,12 +38,14 @@ UINT* Renderer::RunComputeShader(bool updateTexture) {
         outputTextureData.SysMemPitch = sizeof(UINT) * Info.Size.x;
         outputTextureData.SysMemSlicePitch = 0;
 
+        csOutputTexture->Release();
         pDevice->CreateTexture2D(&outputTextureDesc, &outputTextureData, csOutputTexture.GetAddressOf());
 
         // Re-create and set the shader resource view
         D3D11_SHADER_RESOURCE_VIEW_DESC psSRVdesc;
         psInputSRV->GetDesc(&psSRVdesc);
 
+        psInputSRV->Release();
         pDevice->CreateShaderResourceView(csOutputTexture.Get(), &psSRVdesc, psInputSRV.GetAddressOf());
 
         pDeviceContext->PSSetShaderResources(0, 1, psInputSRV.GetAddressOf());
@@ -99,7 +95,6 @@ void Renderer::CreateDeviceResources() {
         D3DCompile(cs_bytes.data(), cs_bytes.size(), NULL, NULL, NULL, "main", "cs_5_0", D3DCOMPILE_DEBUG, NULL, cs_compiled.GetAddressOf(), NULL);
 
         pDevice->CreateComputeShader(cs_compiled->GetBufferPointer(), cs_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
-        pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
 
         // Create output buffer (bound to unordered access view)
         D3D11_BUFFER_DESC outputDesc;
@@ -165,7 +160,6 @@ void Renderer::CreateDeviceResources() {
         D3DCompile(vs_bytes.data(), vs_bytes.size(), NULL, NULL, NULL, "main", "vs_5_0", D3DCOMPILE_DEBUG, NULL, vs_compiled.GetAddressOf(), NULL);
 
         pDevice->CreateVertexShader(vs_compiled->GetBufferPointer(), vs_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf());
-        pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
 
         // Create the full-window vertex buffer
         XMFLOAT3 vertices[] = {
@@ -208,21 +202,33 @@ void Renderer::CreateDeviceResources() {
 
         pDevice->CreateBuffer(&indexBufferDesc, &indexBufferInitData, vsIndexBuffer.GetAddressOf());
 
-        // Set the index and vertex buffers
-        UINT stride = sizeof(XMFLOAT3);
-        UINT offset = 0;
-        pDeviceContext->IASetVertexBuffers(0, 1, vsVertexBuffer.GetAddressOf(), &stride, &offset);
-        pDeviceContext->IASetIndexBuffer(vsIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
         pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        // Create and set the input layout
+        // Create the input layout
         D3D11_INPUT_ELEMENT_DESC iaDesc[] = {
             {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}
         };
         pDevice->CreateInputLayout(iaDesc, 1, vs_compiled->GetBufferPointer(), vs_compiled->GetBufferSize(), vsInputLayout.GetAddressOf());
-        pDeviceContext->IASetInputLayout(vsInputLayout.Get());
         #pragma endregion
 
+        #pragma region Pixel shader
+        // Compile and create the shader
+        ComPtr<ID3DBlob> ps_compiled;
+        std::vector<char> ps_bytes = readBytes("pixel.hlsl");
+        D3DCompile(ps_bytes.data(), ps_bytes.size(), NULL, NULL, NULL, "main", "ps_5_0", D3DCOMPILE_DEBUG, NULL, ps_compiled.GetAddressOf(), NULL);
+
+        pDevice->CreatePixelShader(ps_compiled->GetBufferPointer(), ps_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
+        
+        // Create and set the input texture shader resource view
+        D3D11_SHADER_RESOURCE_VIEW_DESC psSRVdesc;
+        psSRVdesc.Format = DXGI_FORMAT_R32_UINT;
+        psSRVdesc.Texture2D.MipLevels = 1;
+        psSRVdesc.Texture2D.MostDetailedMip = 0;
+        psSRVdesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+
+        pDevice->CreateShaderResourceView(csOutputTexture.Get(), &psSRVdesc, psInputSRV.GetAddressOf());   
+        #pragma endregion
+   
         #pragma region Render target view
         // Get back buffer and create render target view
         pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)pBackBuffer.GetAddressOf());
@@ -234,30 +240,6 @@ void Renderer::CreateDeviceResources() {
         viewport.MinDepth = 0;
         viewport.MaxDepth = 1;
         pDeviceContext->RSSetViewports(1, &viewport);
-        #pragma endregion
-
-        #pragma region Pixel shader
-        // Compile and create the shader
-        ComPtr<ID3DBlob> ps_compiled;
-        std::vector<char> ps_bytes = readBytes("pixel.hlsl");
-        D3DCompile(ps_bytes.data(), ps_bytes.size(), NULL, NULL, NULL, "main", "ps_5_0", D3DCOMPILE_DEBUG, NULL, ps_compiled.GetAddressOf(), NULL);
-
-        pDevice->CreatePixelShader(ps_compiled->GetBufferPointer(), ps_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
-        pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
-
-        // Set the pixel shader constant buffer too
-        pDeviceContext->PSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
-        
-        // Create and set the input texture shader resource view
-        D3D11_SHADER_RESOURCE_VIEW_DESC psSRVdesc;
-        psSRVdesc.Format = DXGI_FORMAT_R32_UINT;
-        psSRVdesc.Texture2D.MipLevels = 1;
-        psSRVdesc.Texture2D.MostDetailedMip = 0;
-        psSRVdesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-
-        pDevice->CreateShaderResourceView(csOutputTexture.Get(), &psSRVdesc, psInputSRV.GetAddressOf());
-
-        pDeviceContext->PSSetShaderResources(0, 1, psInputSRV.GetAddressOf());        
         #pragma endregion
     }
 }
@@ -294,17 +276,34 @@ Renderer::Renderer(HWND hWnd_) :
 hWnd(hWnd_)
 {
     CreateDeviceIndependentResources();
-
-    OnRender();
+    CreateDeviceResources();
 }
 
 Renderer::~Renderer() {}
 
-void Renderer::OnRender(bool updateCBuffer) {
-    CreateDeviceResources();
+void Renderer::OnRender(float delta) {
+    Info.Time += delta;
+    UpdateConstantBuffer();
 
-    // In case of updated PreviewZoom update constant buffer
-    if (updateCBuffer) UpdateConstantBuffer();
+    // Set the shaders
+    pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
+    pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
+    pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
+
+    // Set IA properties
+    UINT stride = sizeof(XMFLOAT3);
+    UINT offset = 0;
+    pDeviceContext->IASetVertexBuffers(0, 1, vsVertexBuffer.GetAddressOf(), &stride, &offset);
+    pDeviceContext->IASetIndexBuffer(vsIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+    pDeviceContext->IASetInputLayout(vsInputLayout.Get());
+    
+    // Set shaders resources/outputs/constant buffers
+    pDeviceContext->PSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
+    pDeviceContext->CSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
+    pDeviceContext->CSSetUnorderedAccessViews(0, 1, csUAV.GetAddressOf(), nullptr);
+
+    UINT* data = RunComputeShader(true);
+    free(data);
 
     // Clear and set render target view
     float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -313,8 +312,11 @@ void Renderer::OnRender(bool updateCBuffer) {
 
     // Draw
     pDeviceContext->DrawIndexed(6, 0, 0);
-
     pSwapChain->Present(1, 0);
+
+    // Clear
+    ID3D11UnorderedAccessView* UAVs[] = { nullptr };
+    pDeviceContext->CSSetUnorderedAccessViews(0, 1, UAVs, nullptr);
 }
 
 void Renderer::OnResize() {
@@ -352,58 +354,52 @@ void Renderer::OnResize() {
         csOutputBuffer->GetDesc(&outputDesc);
         outputDesc.ByteWidth = sizeof(UINT) * size.x * size.y;
 
+        csOutputBuffer->Release();
         pDevice->CreateBuffer(&outputDesc, nullptr, csOutputBuffer.GetAddressOf());
 
         outputDesc.Usage = D3D11_USAGE_STAGING;
         outputDesc.BindFlags = 0;
         outputDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
+        csOutputResultBuffer->Release();
         pDevice->CreateBuffer(&outputDesc, 0, csOutputResultBuffer.GetAddressOf());
 
-        // Resize the unordered access view
+        // Resize the unordered access view       
         D3D11_UNORDERED_ACCESS_VIEW_DESC csUAVdesc;
         csUAV->GetDesc(&csUAVdesc);
         csUAVdesc.Buffer.NumElements = size.x * size.y;
 
+        csUAV->Release();
         pDevice->CreateUnorderedAccessView(csOutputBuffer.Get(), &csUAVdesc, csUAV.GetAddressOf());
                 
-        // Resize the texture, as well as recall the compute shader because of the new size
+        // Resize the texture, as well as recall the compute shader because of the new size   
         D3D11_TEXTURE2D_DESC outputTextureDesc;
         csOutputTexture->GetDesc(&outputTextureDesc);
         outputTextureDesc.Width = Info.Size.x;
         outputTextureDesc.Height = Info.Size.y;
 
+        UINT* data = RunComputeShader(false);
+
         D3D11_SUBRESOURCE_DATA outputTextureData;
-        outputTextureData.pSysMem = RunComputeShader(false);
+        outputTextureData.pSysMem = data;
         outputTextureData.SysMemPitch = sizeof(UINT) * Info.Size.x;
         outputTextureData.SysMemSlicePitch = 0;
 
+        csOutputTexture->Release();
         pDevice->CreateTexture2D(&outputTextureDesc, &outputTextureData, csOutputTexture.GetAddressOf());
 
-        // Re-create and set the texture shader resource view
+        free(data);
+
+        // Re-create and set the texture shader resource view  
         D3D11_SHADER_RESOURCE_VIEW_DESC psSRVdesc;
         psInputSRV->GetDesc(&psSRVdesc);
 
+        psInputSRV->Release();
         pDevice->CreateShaderResourceView(csOutputTexture.Get(), &psSRVdesc, psInputSRV.GetAddressOf());
-
-        pDeviceContext->PSSetShaderResources(0, 1, psInputSRV.GetAddressOf());
-
-        // Re-render
-        OnRender();
         #pragma endregion
     }
 }
-
-void Renderer::Calculate() {
-    if (!Reloading) {
-        UpdateConstantBuffer();
-        RunComputeShader(true);
-        OnRender();
-    }
-}
-
 void Renderer::OnZoom() {
-    #pragma region Re-calculate fractal bounds
     if (Info.PreviewZoom.x != -1 && Info.PreviewZoom.x != Info.PreviewZoom.z && Info.PreviewZoom.y != Info.PreviewZoom.w) {
         const float zl = Info.Zoom.x;
         Info.Zoom.x = (Info.PreviewZoom.x < Info.PreviewZoom.z ? Info.PreviewZoom.x : Info.PreviewZoom.z) * (Info.Zoom.z - zl) + zl;
@@ -412,23 +408,16 @@ void Renderer::OnZoom() {
         Info.Zoom.y = (Info.PreviewZoom.y < Info.PreviewZoom.w ? Info.PreviewZoom.y : Info.PreviewZoom.w) * (Info.Zoom.w - zt) + zt;
         Info.Zoom.w = (Info.PreviewZoom.y > Info.PreviewZoom.w ? Info.PreviewZoom.y : Info.PreviewZoom.w) * (Info.Zoom.w - zt) + zt;
         // Basically, I will split up the last line of code (can be any out of 4) into two parts: (...) | * (...) + ...
-        // The first part is just getting the real left/right/top/bottom, and the second part is conversion to the complex plane
+        // The first part is just getting the real left/right/top/bottom (left actually can be right for ex.), and the second part is conversion to the complex plane
     }
-    #pragma endregion
 
     // Invalidate PreviewZoom
     Info.PreviewZoom = XMFLOAT4(-1, -1, -1, -1);
-
-    Calculate();
 }
 
 void Renderer::OnC_Change() {
-    #pragma region Re-calculate fractal C
     Info.C.x = (Info.C.x / Info.Size.x) * (Info.Zoom.z - Info.Zoom.x) + Info.Zoom.x;
     Info.C.y = (Info.C.y / Info.Size.y) * (Info.Zoom.w - Info.Zoom.y) + Info.Zoom.y;
-    #pragma endregion 
-
-    Calculate();
 }
 
 void Renderer::OnHLSL_Change(SHADER_TYPE shaderType) {
@@ -438,7 +427,7 @@ void Renderer::OnHLSL_Change(SHADER_TYPE shaderType) {
     ComPtr<ID3DBlob> s_compiled;
     std::vector<char> s_bytes = readBytes(shaderType == SHADER_TYPE_COMPUTE ? "compute.hlsl" : shaderType == SHADER_TYPE_VERTEX ? "vertex.hlsl" : "pixel.hlsl");
     D3DCompile(s_bytes.data(), s_bytes.size(), NULL, NULL, NULL, "main", 
-               shaderType == SHADER_TYPE_COMPUTE ? "cs_5_0" : shaderType == SHADER_TYPE_VERTEX ? "vs_5_0" : "ps_5_0", D3DCOMPILE_DEBUG, NULL, s_compiled.GetAddressOf(), NULL);
+        shaderType == SHADER_TYPE_COMPUTE ? "cs_5_0" : shaderType == SHADER_TYPE_VERTEX ? "vs_5_0" : "ps_5_0", D3DCOMPILE_DEBUG, NULL, s_compiled.GetAddressOf(), NULL);
 
     if (s_compiled == nullptr) {
         Reloading = false;
@@ -448,21 +437,21 @@ void Renderer::OnHLSL_Change(SHADER_TYPE shaderType) {
     // Assign the shader to the corresponding variable
     switch (shaderType) {
     case SHADER_TYPE_COMPUTE:
+        cShader->Release();
         pDevice->CreateComputeShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
         pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
         break;
     case SHADER_TYPE_VERTEX:
+        vShader->Release();
         pDevice->CreateVertexShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf());
         pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
         break;
     case SHADER_TYPE_PIXEL:
+        pShader->Release();
         pDevice->CreatePixelShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
         pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
         break;
     }
 
     Reloading = false;
-
-    // Re-calculate and re-render
-    Calculate();
 }

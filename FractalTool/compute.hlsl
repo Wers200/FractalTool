@@ -4,7 +4,7 @@ cbuffer global : register(b0) {
 	float2 c		: C;
 	uint2 size		: Size;
 	uint maxIter	: MaxIter;
-	uint preMaxIter : PreMaxIter;
+	float time		: Time;
 };
 
 static uint block = floor((size.x * size.y) / 1024);
