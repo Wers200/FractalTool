@@ -1,7 +1,4 @@
 #include "framework.h"
-#include "compute.h"
-#include "vertex.h"
-#include "pixel.h"
 #include "renderer.h"
 
 #pragma region Shader helper functions
@@ -282,45 +279,47 @@ hWnd(hWnd_)
 Renderer::~Renderer() {}
 
 void Renderer::OnRender(float delta) {
-    Info.Time += delta;
-    UpdateConstantBuffer();
+    if (!Reloading) {
+        Info.Time += delta;
+        UpdateConstantBuffer();
 
-    // Set the shaders
-    pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
-    pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
-    pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
+        // Set the shaders
+        pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
+        pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
+        pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
 
-    // Set IA properties
-    UINT stride = sizeof(XMFLOAT3);
-    UINT offset = 0;
-    pDeviceContext->IASetVertexBuffers(0, 1, vsVertexBuffer.GetAddressOf(), &stride, &offset);
-    pDeviceContext->IASetIndexBuffer(vsIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-    pDeviceContext->IASetInputLayout(vsInputLayout.Get());
-    
-    // Set shaders resources/outputs/constant buffers
-    pDeviceContext->PSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
-    pDeviceContext->CSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
-    pDeviceContext->CSSetUnorderedAccessViews(0, 1, csUAV.GetAddressOf(), nullptr);
+        // Set IA properties
+        UINT stride = sizeof(XMFLOAT3);
+        UINT offset = 0;
+        pDeviceContext->IASetVertexBuffers(0, 1, vsVertexBuffer.GetAddressOf(), &stride, &offset);
+        pDeviceContext->IASetIndexBuffer(vsIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+        pDeviceContext->IASetInputLayout(vsInputLayout.Get());
 
-    UINT* data = RunComputeShader(true);
-    free(data);
+        // Set shaders resources/outputs/constant buffers
+        pDeviceContext->PSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
+        pDeviceContext->CSSetConstantBuffers(0, 1, cBuffer.GetAddressOf());
+        pDeviceContext->CSSetUnorderedAccessViews(0, 1, csUAV.GetAddressOf(), nullptr);
 
-    // Clear and set render target view
-    float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    pDeviceContext->ClearRenderTargetView(pRTV.Get(), color);
-    pDeviceContext->OMSetRenderTargets(1, pRTV.GetAddressOf(), nullptr);
+        UINT* data = RunComputeShader(true);
+        free(data);
 
-    // Draw
-    pDeviceContext->DrawIndexed(6, 0, 0);
-    pSwapChain->Present(1, 0);
+        // Clear and set render target view
+        float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        pDeviceContext->ClearRenderTargetView(pRTV.Get(), color);
+        pDeviceContext->OMSetRenderTargets(1, pRTV.GetAddressOf(), nullptr);
 
-    // Clear
-    ID3D11UnorderedAccessView* UAVs[] = { nullptr };
-    pDeviceContext->CSSetUnorderedAccessViews(0, 1, UAVs, nullptr);
+        // Draw
+        pDeviceContext->DrawIndexed(6, 0, 0);
+        pSwapChain->Present(1, 0);
+
+        // Clear
+        ID3D11UnorderedAccessView* UAVs[] = { nullptr };
+        pDeviceContext->CSSetUnorderedAccessViews(0, 1, UAVs, nullptr);
+    }
 }
 
 void Renderer::OnResize() {
-    if (pRTV) {
+    if (pRTV && !Reloading) {
         RECT rc;
         GetClientRect(hWnd, &rc);
 
@@ -439,17 +438,14 @@ void Renderer::OnHLSL_Change(SHADER_TYPE shaderType) {
     case SHADER_TYPE_COMPUTE:
         cShader->Release();
         pDevice->CreateComputeShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
-        pDeviceContext->CSSetShader(cShader.Get(), nullptr, 0);
         break;
     case SHADER_TYPE_VERTEX:
         vShader->Release();
         pDevice->CreateVertexShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf());
-        pDeviceContext->VSSetShader(vShader.Get(), nullptr, 0);
         break;
     case SHADER_TYPE_PIXEL:
         pShader->Release();
         pDevice->CreatePixelShader(s_compiled->GetBufferPointer(), s_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
-        pDeviceContext->PSSetShader(pShader.Get(), nullptr, 0);
         break;
     }
 
