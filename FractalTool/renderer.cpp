@@ -1,4 +1,7 @@
 #include "framework.h"
+#include "compute.h"
+#include "vertex.h"
+#include "pixel.h"
 #include "renderer.h"
 
 #pragma region Shader helper functions
@@ -68,6 +71,7 @@ void Renderer::CreateDeviceResources() {
         Info.PreviewZoom = XMFLOAT4(-1, -1, -1, -1);
         Info.Size = size;
         Info.MaxIter = 50;
+        Info.Time = 0;
 
         D3D11_BUFFER_DESC cBufferDesc;
         cBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
