@@ -12,7 +12,6 @@ using namespace Microsoft::WRL;
 
 #include <d3d11_4.h>
 #include <d3d11sdklayers.h>
-#include <dwrite.h>
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
 using namespace DirectX;
