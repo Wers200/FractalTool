@@ -1,7 +1,4 @@
 #include "framework.h"
-#include "compute.h"
-#include "vertex.h"
-#include "pixel.h"
 #include "renderer.h"
 
 #pragma region Shader helper functions
