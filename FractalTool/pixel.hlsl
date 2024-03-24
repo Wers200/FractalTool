@@ -17,21 +17,29 @@ cbuffer global : register(b0) {
 float4 main(PS_INPUT input) : SV_TARGET
 {
 	// Get iteration value for the current pixel
-	uint iter = data.Load(int3(input.position.xy, 0)).x;
-	
+	uint iter = data.Load(int3(input.position.xy, 0)).x - 1;
+	float iterH = 1.5 * pow(iter, 0.75); // Soften the hue
+
 	// Get the HSV color values
-	const float H = iter / 10.0 - 6.0 * floor(iter / 60.0);
-	const float S = 1;
-	const float V = 0.5;
+	float H = iterH / 10.0 - 6.0 * floor(iterH / 60.0);
+	float S = 1;
+	float V = 0.5;
+
+	// Color the fractal's insides black
+	if (iter == -1) {
+		H = 0;
+		S = 0;
+		V = 0;
+	}
 
 	// Convert HSV to RGB
-	const float C = (1 - abs(2 * V - 1)) * S;
-	const float X = C * (1 - abs(H % 2 - 1));
+	float C = (1 - abs(2 * V - 1)) * S;
+	float X = C * (1 - abs(H % 2 - 1));
 
 	float3 color = float3(
-		iter < (maxIter - 1) ? ((floor(H) == 0 || floor(H) == 5) ? C : (floor(H) == 1 || floor(H) == 4) ? X : 0 + V - C / 2) : 0,
-		iter < (maxIter - 1) ? ((floor(H) == 1 || floor(H) == 2) ? C : (floor(H) == 0 || floor(H) == 3) ? X : 0 + V - C / 2) : 0,
-		iter < (maxIter - 1) ? ((floor(H) == 3 || floor(H) == 4) ? C : (floor(H) == 2 || floor(H) == 5) ? X : 0 + V - C / 2) : 0
+		((floor(H) == 0 || floor(H) == 5) ? C : (floor(H) == 1 || floor(H) == 4) ? X : 0 + V - C / 2),
+		((floor(H) == 1 || floor(H) == 2) ? C : (floor(H) == 0 || floor(H) == 3) ? X : 0 + V - C / 2),
+		((floor(H) == 3 || floor(H) == 4) ? C : (floor(H) == 2 || floor(H) == 5) ? X : 0 + V - C / 2)
 	);
 
 	// Get real selection rectangle (where x is 100% left and etc.)
