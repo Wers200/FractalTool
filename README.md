@@ -9,10 +9,10 @@ You can change some variables used in the fractal rendering process inside the p
 2. The zoom, varied via the right mouse button.
 3. The maximum iteration count, changed in steps of 25 and 250 via arrow keys (L/R and U/D).
 
-Note that sometimes the program ignores the changes in a sporadic fashion for reasons unknown. In this case, poking around or restarting the program might help. In the dire cases, or to set specific constant values, you might need to change the shader code directly.
+Note that sometimes the program ignores the changes in a sporadic fashion for the reasons unknown. In this case, poking around or restarting the program might help. In the dire cases, or to set specific constant values, you might need to change the shader code directly.
 
 ## Custom shaders
-In order to replace the default shaders, put new `compute.hlsl` file as the new compute shader and `pixel.hlsl` file as the new pixel shader in the same directory with the program. 
+In order to replace the default shaders, put new `compute.hlsl` file as the new compute shader and `pixel.hlsl` file as the new pixel shader in the same directory with the program instead of the ones already present. 
 
 In structure the shaders must match the usual default shaders, only with the `main` function affected in your pixel shader and the `getIter` function in your compute shader, only perhaps with some additional helper functions appended. Note that using `double` instead of `float` to increase precision slows down the program immensely.
 
