@@ -1,8 +1,5 @@
 #include "framework.h"
 #include "renderer.h"
-#include "compute.h"
-#include "vertex.h"
-#include "pixel.h"
 
 #pragma region Shader helper functions
 void Renderer::UpdateConstantBuffer() {
@@ -70,7 +67,7 @@ void Renderer::CreateDeviceResources() {
         Info.Zoom = XMFLOAT4(-2, 2, 2, -2);
         Info.PreviewZoom = XMFLOAT4(-1, -1, -1, -1);
         Info.Size = size;
-        Info.MaxIter = 100;
+        Info.MaxIter = 25;
         Info.Time = 0;
 
         D3D11_BUFFER_DESC cBufferDesc;
@@ -96,7 +93,6 @@ void Renderer::CreateDeviceResources() {
         HRESULT hr_cs = D3DCompile(cs_bytes_c.data(), cs_bytes_c.size(), NULL, NULL, NULL, "main", "cs_5_0", D3DCOMPILE_DEBUG, NULL, cs_compiled.GetAddressOf(), NULL);
 
         if(SUCCEEDED(hr_cs)) pDevice->CreateComputeShader(cs_compiled->GetBufferPointer(), cs_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
-        else pDevice->CreateComputeShader(cs_bytes, sizeof(cs_bytes), nullptr, cShader.GetAddressOf());
 
         // Create output buffer (bound to unordered access view)
         D3D11_BUFFER_DESC outputDesc;
@@ -162,7 +158,6 @@ void Renderer::CreateDeviceResources() {
         HRESULT hr_vs = D3DCompile(vs_bytes_c.data(), vs_bytes_c.size(), NULL, NULL, NULL, "main", "vs_5_0", D3DCOMPILE_DEBUG, NULL, vs_compiled.GetAddressOf(), NULL);
 
         if(SUCCEEDED(hr_vs)) pDevice->CreateVertexShader(vs_compiled->GetBufferPointer(), vs_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf());
-        else pDevice->CreateVertexShader(vs_bytes, sizeof(vs_bytes), nullptr, vShader.GetAddressOf());
 
         // Create the full-window vertex buffer
         XMFLOAT3 vertices[] = {
@@ -221,7 +216,6 @@ void Renderer::CreateDeviceResources() {
         HRESULT hr_ps = D3DCompile(ps_bytes_c.data(), ps_bytes_c.size(), NULL, NULL, NULL, "main", "ps_5_0", D3DCOMPILE_DEBUG, NULL, ps_compiled.GetAddressOf(), NULL);
 
         if(SUCCEEDED(hr_ps)) pDevice->CreatePixelShader(ps_compiled->GetBufferPointer(), ps_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
-        else pDevice->CreatePixelShader(ps_bytes, sizeof(ps_bytes), nullptr, pShader.GetAddressOf());
         
         // Create and set the input texture shader resource view
         D3D11_SHADER_RESOURCE_VIEW_DESC psSRVdesc;
