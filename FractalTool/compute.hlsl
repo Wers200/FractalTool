@@ -12,17 +12,20 @@ RWStructuredBuffer<uint> output : register(u0);
 
 uint getIter(uint x, uint y) {
 	// Convert the x and y to the complex plane
-	double zx = ((double)x / size.x) * (zoom.z - zoom.x) + zoom.x;
-	double zy = ((double)y / size.y) * (zoom.w - zoom.y) + zoom.y;
+	float zx = ((float)x / size.x) * (zoom.z - zoom.x) + zoom.x;
+	float zy = ((float)y / size.y) * (zoom.w - zoom.y) + zoom.y;
 
 	// Get the maximum z^2 + c iteration (where it is not outside of the circle with radius of two)
-	uint j = 0;
-	while (zx * zx * zy * zy < 4 && j <= maxIter) {
-		double temp = zx * zx - zy * zy + c.x;
+	uint j = 1;
+	while (zx * zx + zy * zy < 4 && j <= maxIter) {
+		float temp = zx * zx - zy * zy + c.x;
 		zy = 2.0 * zx * zy + c.y;
 		zx = temp;
 		j++;
 	}
+
+	// To discern between good values and not so
+	if (j == maxIter + 1) j = 0;
 
 	return j;
 }
@@ -37,7 +40,7 @@ void iteration(uint k) {
 
 [numthreads(1024, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
-	// I am too lazy to explain my parallelized loop, so think yourself
+	// Trivial parallelisation
 	for (uint k = 0; k < block; k++) {
 		iteration(block * DTid.x + k);
 	}
