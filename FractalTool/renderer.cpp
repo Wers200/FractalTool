@@ -405,7 +405,7 @@ void Renderer::OnResize() {
         csUAV->Release();
         pDevice->CreateUnorderedAccessView(csOutputBuffer.Get(), &csUAVdesc, csUAV.GetAddressOf());
                 
-        // Resize the texture, as well as recall the compute shader because of the S size   
+        // Resize the texture, as well as recall the compute shader because of the new size   
         D3D11_TEXTURE2D_DESC outputTextureDesc;
         csOutputTexture->GetDesc(&outputTextureDesc);
         outputTextureDesc.Width = Info.Size.x;
