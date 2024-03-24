@@ -37,11 +37,13 @@ public:
 	void OnRender(float delta);
 	void OnResize();
 	void OnZoom();
+	void OnQuit();
 	void OnC_Change();
 	void OnHLSL_Change(SHADER_TYPE shader);
 private:
 	ComPtr<ID3D11Device> pDevice;
 	ComPtr<ID3D11DeviceContext> pDeviceContext;
+	ComPtr<ID3D11Debug> pDebug;
 	ComPtr<IDXGISwapChain> pSwapChain;
 	ComPtr<ID3D11Buffer> pBackBuffer;
 	ComPtr<ID3D11RenderTargetView> pRTV; // Back buffer render target view
@@ -69,4 +71,5 @@ private:
 
 	void CreateDeviceResources();
 	void CreateDeviceIndependentResources();
+	void ReleaseResources();
 };

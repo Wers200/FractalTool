@@ -27,3 +27,8 @@ using namespace DirectX;
 
 #include <filesystem>
 #include <fstream>
+
+#if defined(DEBUG) || defined(_DEBUG)
+#undef new
+#define new new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+#endif

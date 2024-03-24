@@ -1,7 +1,7 @@
 ﻿#include "framework.h"
 #include "renderer.h"
 
-Renderer* renderer;
+std::unique_ptr<Renderer> renderer;
 
 bool mDown = false;
 
@@ -93,6 +93,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int) {
+
+#if defined(DEBUG) | defined(_DEBUG)
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
+
 	// Get screen sizes
 	HDC hDC = GetDC(0);
 	int screenWidth = GetDeviceCaps(hDC, HORZRES);
@@ -131,7 +136,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int) {
 		NULL
 	);
 
-	renderer = new Renderer(hWnd);
+	renderer = std::unique_ptr<Renderer>(new Renderer(hWnd));
 		
 	// Show window
 	UpdateWindow(hWnd);
@@ -245,6 +250,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int) {
 
 		renderer->OnRender(delta);
 	}
+	
+	renderer->OnQuit();
+	renderer.reset();
 
 	return 0;
 }
