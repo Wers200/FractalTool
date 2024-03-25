@@ -460,7 +460,7 @@ void Renderer::OnHLSL_Change(SHADER_TYPE shaderType) {
     ComPtr<ID3DBlob> s_compiled;
     std::vector<char> s_bytes = readBytes(shaderType == SHADER_TYPE_COMPUTE ? "compute.hlsl" : shaderType == SHADER_TYPE_VERTEX ? "vertex.hlsl" : "pixel.hlsl");
     D3DCompile(s_bytes.data(), s_bytes.size(), NULL, NULL, NULL, "main", 
-        shaderType == SHADER_TYPE_COMPUTE ? "cs_5_0" : shaderType == SHADER_TYPE_VERTEX ? "vs_5_0" : "ps_5_0", D3DCOMPILE_DEBUG, NULL, s_compiled.GetAddressOf(), NULL);
+        shaderType == SHADER_TYPE_COMPUTE ? "cs_5_0" : shaderType == SHADER_TYPE_VERTEX ? "vs_5_0" : "ps_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, NULL, s_compiled.GetAddressOf(), NULL);
 
     if (s_compiled == nullptr) {
         Reloading = false;
