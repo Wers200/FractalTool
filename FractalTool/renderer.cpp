@@ -21,7 +21,14 @@ UINT* Renderer::RunComputeShader(bool updateTexture) {
     pDeviceContext->Map(csOutputResultBuffer.Get(), 0, D3D11_MAP_READ, 0, &outputRead);
 
     UINT* data = (UINT*)malloc(sizeof(UINT) * Info.Size.x * Info.Size.y);
-    if(data) memcpy(data, outputRead.pData, sizeof(UINT) * Info.Size.x * Info.Size.y);
+    if (data) {
+        if (outputRead.pData) {
+            memcpy(data, outputRead.pData, sizeof(UINT) * Info.Size.x * Info.Size.y);
+        }
+        else {
+            ZeroMemory(data, sizeof(UINT) * Info.Size.x * Info.Size.y);
+        }
+    }
 
     pDeviceContext->Unmap(csOutputResultBuffer.Get(), 0);
 
@@ -54,6 +61,43 @@ UINT* Renderer::RunComputeShader(bool updateTexture) {
 
 void Renderer::CreateDeviceResources() {
     if (!pRTV) {
+        // Compile and create the shader
+        ComPtr<ID3DBlob> cs_compiled;
+        std::vector<char> cs_bytes_c = readBytes("compute.hlsl");
+        HRESULT hr_cs = D3DCompile(cs_bytes_c.data(), cs_bytes_c.size(), NULL, NULL, NULL, "main", "cs_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, NULL, cs_compiled.GetAddressOf(), NULL);
+        cs_bytes_c.clear();
+        cs_bytes_c.shrink_to_fit();
+        if (SUCCEEDED(hr_cs)) pDevice->CreateComputeShader(cs_compiled->GetBufferPointer(), cs_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
+        cs_compiled.Reset();
+
+        // Compile and create the shader
+        ComPtr<ID3DBlob> vs_compiled;
+        std::vector<char> vs_bytes_c = readBytes("vertex.hlsl");
+        HRESULT hr_vs = D3DCompile(vs_bytes_c.data(), vs_bytes_c.size(), NULL, NULL, NULL, "main", "vs_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, NULL, vs_compiled.GetAddressOf(), NULL);
+        vs_bytes_c.clear();
+        vs_bytes_c.shrink_to_fit();
+
+        if (SUCCEEDED(hr_vs)) {
+            pDevice->CreateVertexShader(vs_compiled->GetBufferPointer(), vs_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf());
+
+            // Create the input layout
+            D3D11_INPUT_ELEMENT_DESC iaDesc[] = {
+                {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}
+            };
+            pDevice->CreateInputLayout(iaDesc, 1, vs_compiled->GetBufferPointer(), vs_compiled->GetBufferSize(), vsInputLayout.GetAddressOf());
+        }
+
+        vs_compiled.Reset();
+
+        // Compile and create the shader
+        ComPtr<ID3DBlob> ps_compiled;
+        std::vector<char> ps_bytes_c = readBytes("pixel.hlsl");
+        HRESULT hr_ps = D3DCompile(ps_bytes_c.data(), ps_bytes_c.size(), NULL, NULL, NULL, "main", "ps_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, NULL, ps_compiled.GetAddressOf(), NULL);
+        ps_bytes_c.clear();
+        ps_bytes_c.shrink_to_fit();
+        if (SUCCEEDED(hr_ps)) pDevice->CreatePixelShader(ps_compiled->GetBufferPointer(), ps_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
+        ps_compiled.Reset();
+
         RECT rc;
         GetClientRect(hWnd, &rc);
 
@@ -87,13 +131,6 @@ void Renderer::CreateDeviceResources() {
         #pragma endregion
 
         #pragma region Compute shader
-        // Compile and create the shader
-        ComPtr<ID3DBlob> cs_compiled;
-        std::vector<char> cs_bytes_c = readBytes("compute.hlsl");
-        HRESULT hr_cs = D3DCompile(cs_bytes_c.data(), cs_bytes_c.size(), NULL, NULL, NULL, "main", "cs_5_0", D3DCOMPILE_DEBUG, NULL, cs_compiled.GetAddressOf(), NULL);
-
-        if(SUCCEEDED(hr_cs)) pDevice->CreateComputeShader(cs_compiled->GetBufferPointer(), cs_compiled->GetBufferSize(), nullptr, cShader.GetAddressOf());
-
         // Create output buffer (bound to unordered access view)
         D3D11_BUFFER_DESC outputDesc;
         outputDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -149,16 +186,10 @@ void Renderer::CreateDeviceResources() {
         outputTextureData.SysMemSlicePitch = 0;
 
         pDevice->CreateTexture2D(&outputTextureDesc, &outputTextureData, csOutputTexture.GetAddressOf());
+        free(data);
         #pragma endregion
 
         #pragma region Vertex shader
-        // Compile and create the shader
-        ComPtr<ID3DBlob> vs_compiled;
-        std::vector<char> vs_bytes_c = readBytes("vertex.hlsl");
-        HRESULT hr_vs = D3DCompile(vs_bytes_c.data(), vs_bytes_c.size(), NULL, NULL, NULL, "main", "vs_5_0", D3DCOMPILE_DEBUG, NULL, vs_compiled.GetAddressOf(), NULL);
-
-        if(SUCCEEDED(hr_vs)) pDevice->CreateVertexShader(vs_compiled->GetBufferPointer(), vs_compiled->GetBufferSize(), nullptr, vShader.GetAddressOf());
-
         // Create the full-window vertex buffer
         XMFLOAT3 vertices[] = {
             XMFLOAT3(-1, -1, 0),
@@ -201,22 +232,9 @@ void Renderer::CreateDeviceResources() {
         pDevice->CreateBuffer(&indexBufferDesc, &indexBufferInitData, vsIndexBuffer.GetAddressOf());
 
         pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-        // Create the input layout
-        D3D11_INPUT_ELEMENT_DESC iaDesc[] = {
-            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0}
-        };
-        pDevice->CreateInputLayout(iaDesc, 1, vs_compiled->GetBufferPointer(), vs_compiled->GetBufferSize(), vsInputLayout.GetAddressOf());
         #pragma endregion
 
         #pragma region Pixel shader
-        // Compile and create the shader
-        ComPtr<ID3DBlob> ps_compiled;
-        std::vector<char> ps_bytes_c = readBytes("pixel.hlsl");
-        HRESULT hr_ps = D3DCompile(ps_bytes_c.data(), ps_bytes_c.size(), NULL, NULL, NULL, "main", "ps_5_0", D3DCOMPILE_DEBUG, NULL, ps_compiled.GetAddressOf(), NULL);
-
-        if(SUCCEEDED(hr_ps)) pDevice->CreatePixelShader(ps_compiled->GetBufferPointer(), ps_compiled->GetBufferSize(), nullptr, pShader.GetAddressOf());
-        
         // Create and set the input texture shader resource view
         D3D11_SHADER_RESOURCE_VIEW_DESC psSRVdesc;
         psSRVdesc.Format = DXGI_FORMAT_R32_UINT;
@@ -268,6 +286,14 @@ void Renderer::CreateDeviceIndependentResources() {
     swapChainDesc.OutputWindow = hWnd;
 
     D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, NULL, deviceFlags, levels, 4, D3D11_SDK_VERSION, &swapChainDesc, &pSwapChain, pDevice.GetAddressOf(), nullptr, pDeviceContext.GetAddressOf());
+
+    pDevice->QueryInterface(pDebug.GetAddressOf());
+}
+
+void Renderer::ReleaseResources() {
+    pRTV.Reset();
+    pBackBuffer.Reset();
+    pDeviceContext->Flush();
 }
 
 Renderer::Renderer(HWND hWnd_) :
@@ -278,6 +304,10 @@ hWnd(hWnd_)
 }
 
 Renderer::~Renderer() {}
+
+void Renderer::OnQuit() {
+    ReleaseResources();
+}
 
 void Renderer::OnRender(float delta) {
     if (!Reloading) {
@@ -316,6 +346,9 @@ void Renderer::OnRender(float delta) {
         // Clear
         ID3D11UnorderedAccessView* UAVs[] = { nullptr };
         pDeviceContext->CSSetUnorderedAccessViews(0, 1, UAVs, nullptr);
+        pDeviceContext->CSSetShader(nullptr, nullptr, 0);
+        pDeviceContext->VSSetShader(nullptr, nullptr, 0);
+        pDeviceContext->PSSetShader(nullptr, nullptr, 0);
     }
 }
 
