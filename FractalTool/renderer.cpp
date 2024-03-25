@@ -111,7 +111,7 @@ void Renderer::CreateDeviceResources() {
         Info.Zoom = XMFLOAT4(-2, 2, 2, -2);
         Info.PreviewZoom = XMFLOAT4(-1, -1, -1, -1);
         Info.Size = size;
-        Info.MaxIter = 25;
+        Info.MaxIter = 100;
         Info.Time = 0;
 
         D3D11_BUFFER_DESC cBufferDesc;
