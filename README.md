@@ -17,3 +17,6 @@ In order to replace the default shaders, put new `compute.hlsl` file as the new 
 In structure the shaders must match the usual default shaders, only with the `main` function affected in your pixel shader and the `getIter` function in your compute shader, only perhaps with some additional helper functions appended. Note that using `double` instead of `float` to increase precision slows down the program immensely.
 
 Examples of custom shaders are included in `/FractalTool/Custom` and are also contained in the release.
+
+### Hot reload
+The program also supports editing your shaders on the way, so if you save your `.hlsl` file while the program is running, it will compile the new shaders and update them accordingly. Note that deleting and creating/copying a new shader from elsewhere doesn't trigger reloading, so you have to save the new file with no changes for it to work.
