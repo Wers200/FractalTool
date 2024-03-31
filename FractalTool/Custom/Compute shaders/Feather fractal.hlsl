@@ -11,36 +11,41 @@ cbuffer global : register(b0) {
 static uint block = floor((size.x * size.y) / 1024);
 RWStructuredBuffer<uint> output : register(u0);
 
-uint getIter(uint x, uint y) {
-	// Convert the x and y to the complex plane
-	float z_x = ((float)x / size.x) * (zoom.z - zoom.x) + zoom.x;
-	float z_y = ((float)y / size.y) * (zoom.w - zoom.y) + zoom.y;
+float2 cx_cube(float2 a) {
+  float x_2 = a.x * a.x;
+  float y_2 = a.y * a.y;
+  float d = x_2 - y_2;
+  return float2(a.x * (d - y_2 - y_2), a.y * (x_2 + x_2 + d));
+}
 
-	// Set up the calculation of either the Mandelbrot or the Julia version
+float2 cx_div(float2 a, float2 b) {
+  float denom = 1.0 / (b.x * b.x + b.y * b.y);
+  return float2(a.x * b.x + a.y * b.y, a.y * b.x - a.x * b.y) * denom;
+}
+
+uint getIter(uint x, uint y) {
+	float z_x = -2 * (((float)x / size.x) * (zoom.z - zoom.x) + zoom.x);
+	float z_y = 2 * (((float)y / size.y) * (zoom.w - zoom.y) + zoom.y);
+	
+	float2 z = float2(z_x, z_y);
 	float2 v = float2(0, 0);
-	float2 c_a = float2(z_x, z_y);
 	if (setType) {
+		z = c;
 		v = float2(z_x, z_y);
-		c_a = c;
 	}
 
-	// Get the maximum z^2 + c iteration (where it is not outside of the circle with radius of two)
 	uint j = 1;
-	while (dot(v, v) < 4 && j <= maxIter) {
-		float temp = v.x * v.x - v.y * v.y + c_a.x;
-		v.y = 2 * v.x * v.y + c_a.y;
-		v.x = temp;
+	while (dot(v, v) < 1024 && j <= maxIter) {
+		v = cx_div(cx_cube(v), float2(1 + v.x * v.x, v.y * v.y)) + z; 
 		j++;
 	}
 
-	// To discern between the insides of the fractal and not
 	if (j == maxIter + 1) j = 0;
 
 	return j;
 }
 
 void iteration(uint k) {
-	// Get x and y from k (buffer index)
 	uint x = k % size.x;
 	uint y = floor(k / (float)size.x);
 
@@ -49,7 +54,6 @@ void iteration(uint k) {
 
 [numthreads(1024, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
-	// Simple calculation parallelisation
 	for (uint k = 0; k < block; k++) {
 		iteration(block * DTid.x + k);
 	}
