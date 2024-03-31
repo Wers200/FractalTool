@@ -21,9 +21,11 @@ struct CBUFFER {
 	UINT MaxIter;
 	// Time passed since the app start
 	FLOAT Time;
+	// "Mandelbrot" if False, "Julia" if True
+	BOOL SetType;
 
 	// Unused variable, added to satisfy the D3D requirement of sizeof(CBUFFER) being divisible by 16
-	XMFLOAT2 Unused;
+	FLOAT Unused;
 };
 
 class Renderer {
