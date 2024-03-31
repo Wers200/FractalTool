@@ -107,12 +107,13 @@ void Renderer::CreateDeviceResources() {
         );
         
         #pragma region Constant buffer
-        Info.C = XMFLOAT2(0, 1);
+        Info.C = XMFLOAT2(0, 0);
         Info.Zoom = XMFLOAT4(-2, 2, 2, -2);
         Info.PreviewZoom = XMFLOAT4(-1, -1, -1, -1);
         Info.Size = size;
         Info.MaxIter = 100;
         Info.Time = 0;
+        Info.SetType = false;
 
         D3D11_BUFFER_DESC cBufferDesc;
         cBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
