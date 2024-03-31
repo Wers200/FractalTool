@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "renderer.h"
 
 std::unique_ptr<Renderer> renderer;
@@ -68,6 +68,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			break;
 		case VK_DOWN:
 			if (renderer->Info.MaxIter > 250) renderer->Info.MaxIter -= 250;
+			break;
+		case VK_RETURN:
+			renderer->Info.SetType = !renderer->Info.SetType;
 			break;
 		case VK_SHIFT:
 			shift = true;
