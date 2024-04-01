@@ -23,11 +23,11 @@ The program also supports editing your shaders on the way, so if you save your `
 ### Example custom shaders
 The present custom compute shaders are advised to be used in the following pairings with the provided pixel shaders:
 
-1. `Burning ship.hlsl` with `Reddish.hlsl` or `Raddish.hlsl`, the former being better
-2. `Feather fractal.hlsl` with `Reddish.hlsl` or `Raddish.hlsl`, the latter being better
+1. `Burning ship.hlsl` with `Reddish.hlsl` or `Raddish.hlsl`, the latter being better
+2. `Feather fractal.hlsl` with `Reddish.hlsl` or `Raddish.hlsl`, the former being better
 3. `Hénon map.hlsl` with anything except `Nova fractal.hlsl`
 4. `Mandelbrot set.hlsl` with anything except `Nova fractal.hlsl`
 5. `/Compute shaders/Nova fractal.hlsl` only with `/Pixel shaders/Nova fractal.hlsl`
 6. `Timelybrot set.hlsl` with anything except `Nova fractal.hlsl`
 
-Note that `Hénon map.hlsl` does not support the "Julia" rendering type, while `Nova fractal.hlsl` does not support "Mandelbrot", hence they both are not affected by the rendering type changes.
+Note that `Nova fractal.hlsl` does not support the "Mandelbrot" rendering type and is not affected by clicking Enter and that all other fractals do indeed work with the feature.
