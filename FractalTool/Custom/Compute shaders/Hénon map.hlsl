@@ -8,7 +8,6 @@ cbuffer global : register(b0) {
 	bool setType 	: SetType;
 };
 
-
 static uint block = floor((size.x * size.y) / 1024);
 RWStructuredBuffer<uint> output : register(u0);
 
@@ -16,12 +15,19 @@ uint getIter(uint x, uint y) {
 	float z_x = 1.5 * (((float)x / size.x) * (zoom.z - zoom.x) + zoom.x);
 	float z_y = 1.5 * (-(((float)y / size.y) * (zoom.w - zoom.y) + zoom.y));
 
-	float2 v = float2(0, 0);
+	float2 v = float2(z_x, z_y);
+	float2 c_a = float2(z_x, z_y);
+	if(setType) {
+		z_x *= 20/3.0;
+		z_y *= 20/3.0;
+		v = float2(z_x, z_y);
+		c_a = float2(c.x, c.y);
+	}
 
 	uint j = 1;
-	while (dot(v, v) < 32 && j <= maxIter) {
-		float temp = 1 - z_x * v.x * v.x + v.y; 
-		v.y = z_y * v.x;
+	while (dot(v, v) < 800 && j <= maxIter) {
+		float temp = 1 - c_a.x * v.x * v.x + v.y; 
+		v.y = c_a.y * v.x;
 		v.x = temp;
 		j++;
 	}
